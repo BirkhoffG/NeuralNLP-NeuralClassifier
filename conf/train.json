@@ -1,23 +1,23 @@
 {
   "task_info":{
-    "label_type": "multi_label",
+    "label_type": "single_label",
     "hierarchical": false,
     "hierar_taxonomy": "data/rcv1.taxonomy",
     "hierar_penalty": 0.000001
   },
-  "device": "cuda",
+  "device": "cpu",
   "model_name": "TextCNN",
-  "checkpoint_dir": "checkpoint_dir_rcv1",
-  "model_dir": "trained_model_rcv1",
+  "checkpoint_dir": "checkpoint_dir",
+  "model_dir": "trained_model",
   "data": {
     "train_json_files": [
-      "data/rcv1_train.json"
+      "data/train.json"
     ],
     "validate_json_files": [
-      "data/rcv1_dev.json"
+      "data/test.json"
     ],
     "test_json_files": [
-      "data/rcv1_test.json"
+      "data/test.json"
     ],
     "generate_dict_using_json_files": true,
     "generate_dict_using_all_json_files": true,
@@ -62,12 +62,21 @@
     "visible_device_list": "0",
     "hidden_layer_dropout": 0.5
   },
+  "eval": {
+    "text_file": "data/test.json",
+    "threshold": 0.5,
+    "dir": "eval_dir",
+    "batch_size": 1024,
+    "is_flat": true,
+    "top_k": 100,
+    "model_dir": "checkpoint_dir_rcv1/TextCNN_best"
+  },
   "embedding": {
     "type": "embedding",
     "dimension": 64,
     "region_embedding_type": "context_word",
     "region_size": 5,
-    "initializer": "uniform",
+    "initializer": "xavier_uniform",
     "fan_mode": "FAN_IN",
     "uniform_bound": 0.25,
     "random_stddev": 0.01,
@@ -102,15 +111,6 @@
     "rnn_type": "GRU",
     "bidirectional": true,
     "cell_hidden_dropout": 0.1
-  },
-  "eval": {
-    "text_file": "data/rcv1_test.json",
-    "threshold": 0.5,
-    "dir": "eval_dir",
-    "batch_size": 1024,
-    "is_flat": true,
-    "top_k": 100,
-    "model_dir": "checkpoint_dir_rcv1/TextCNN_best"
   },
   "TextVDCNN": {
     "vdcnn_depth": 9,
@@ -155,7 +155,7 @@
     "global2local": [0, 16, 192, 512, 64]
   },
   "log": {
-    "logger_file": "log_test_rcv1_hierar",
+    "logger_file": "log_test_hierar",
     "log_level": "warn"
   }
 }
