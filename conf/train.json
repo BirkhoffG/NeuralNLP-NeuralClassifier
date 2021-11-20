@@ -5,8 +5,8 @@
     "hierar_taxonomy": "data/rcv1.taxonomy",
     "hierar_penalty": 0.000001
   },
-  "device": "cpu",
-  "model_name": "TextCNN",
+  "device": "cuda",
+  "model_name": "TextRNN",
   "checkpoint_dir": "checkpoint_dir",
   "model_dir": "trained_model",
   "data": {
@@ -56,7 +56,7 @@
     "decay_rate": 1.0,
     "clip_gradients": 100.0,
     "l2_lambda": 0.0,
-    "loss_type": "BCEWithLogitsLoss",
+    "loss_type": "SoftmaxCrossEntropy",
     "sampler": "fixed",
     "num_sampled": 5,
     "visible_device_list": "0",
