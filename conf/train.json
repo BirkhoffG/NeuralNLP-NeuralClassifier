@@ -23,7 +23,7 @@
     "generate_dict_using_all_json_files": true,
     "generate_dict_using_pretrained_embedding": false,
     "generate_hierarchy_label": true,
-    "dict_dir": "dict_rcv1",
+    "dict_dir": "dict",
     "num_worker": 4
   },
   "feature": {

@@ -42,6 +42,7 @@ from model.classification.hmcn import HMCN
 from model.loss import ClassificationLoss
 from model.model_util import get_optimizer, get_hierar_relations
 from util import ModeType
+import numpy as np
 
 
 ClassificationDataset, ClassificationCollator, FastTextCollator, ClassificationLoss, cEvaluator
@@ -162,6 +163,7 @@ class ClassificationTrainer(object):
             predict_probs.extend(result)
             standard_labels.extend(batch[ClassificationDataset.DOC_LABEL_LIST])
         if mode == ModeType.EVAL:
+            print(f"predict_probs: {[np.argmax(prob) for prob in predict_probs]}")
             total_loss = total_loss / num_batch
             (_, precision_list, recall_list, fscore_list, right_list,
              predict_list, standard_list) = \
@@ -258,4 +260,6 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = str(config.train.visible_device_list)
     torch.manual_seed(2019)
     torch.cuda.manual_seed(2019)
+    model_list = ["FastText", "TextCNN", "TextRNN", "TextRCNN", "DRNN", "VDCNN", "DPCNN", "AttentiveConvNet", "Transformer"]
+    config._update({'model_name': 'TextCNN'})
     train(config)
