@@ -43,7 +43,12 @@ from model.loss import ClassificationLoss
 from model.model_util import get_optimizer, get_hierar_relations
 from util import ModeType
 import numpy as np
+import pandas as pd
+from sklearn.metrics import f1_score, precision_score, recall_score
 
+
+torch.manual_seed(2019)
+torch.cuda.manual_seed(2019)
 
 ClassificationDataset, ClassificationCollator, FastTextCollator, ClassificationLoss, cEvaluator
 FastText, TextCNN, TextRNN, TextRCNN, DRNN, TextVDCNN, Transformer, DPCNN, AttentiveConvNet, RegionEmbedding
@@ -163,28 +168,37 @@ class ClassificationTrainer(object):
             predict_probs.extend(result)
             standard_labels.extend(batch[ClassificationDataset.DOC_LABEL_LIST])
         if mode == ModeType.EVAL:
-            print(f"predict_probs: {[np.argmax(prob) for prob in predict_probs]}")
+            predicted_labels = np.array([np.argmax(prob) for prob in predict_probs])
+            standard_labels = np.array(standard_labels).reshape(-1)
+            precision = precision_score(standard_labels, predicted_labels, average='weighted', labels=np.unique(predicted_labels))
+            recall = recall_score(standard_labels, predicted_labels, average='weighted', labels=np.unique(predicted_labels))
+            fscore = f1_score(standard_labels, predicted_labels, average='weighted')
             total_loss = total_loss / num_batch
-            (_, precision_list, recall_list, fscore_list, right_list,
-             predict_list, standard_list) = \
-                self.evaluator.evaluate(
-                    predict_probs, standard_label_ids=standard_labels, label_map=self.label_map,
-                    threshold=self.conf.eval.threshold, top_k=self.conf.eval.top_k,
-                    is_flat=self.conf.eval.is_flat, is_multi=is_multi)
-            # precision_list[0] save metrics of flat classification
-            # precision_list[1:] save metrices of hierarchical classification
             self.logger.warn(
-                "%s performance at epoch %d is precision: %f, "
-                "recall: %f, fscore: %f, macro-fscore: %f, right: %d, predict: %d, standard: %d.\n"
-                "Loss is: %f." % (
-                    stage, epoch, precision_list[0][cEvaluator.MICRO_AVERAGE],
-                    recall_list[0][cEvaluator.MICRO_AVERAGE],
-                    fscore_list[0][cEvaluator.MICRO_AVERAGE],
-                    fscore_list[0][cEvaluator.MACRO_AVERAGE],
-                    right_list[0][cEvaluator.MICRO_AVERAGE],
-                    predict_list[0][cEvaluator.MICRO_AVERAGE],
-                        standard_list[0][cEvaluator.MICRO_AVERAGE], total_loss))
-            return fscore_list[0][cEvaluator.MICRO_AVERAGE]
+                f"{stage} performance at epoch {epoch} is f1_score_weighted: {fscore: .6f}, "
+                f"precision_score_weighted: {precision: .6f}, recall_score_weighted: {recall: .6f}, loss: {total_loss: .6f}")
+            return fscore, precision, recall
+            # total_loss = total_loss / num_batch
+            # (_, precision_list, recall_list, fscore_list, right_list,
+            #  predict_list, standard_list) = \
+            #     self.evaluator.evaluate(
+            #         predict_probs, standard_label_ids=standard_labels, label_map=self.label_map,
+            #         threshold=self.conf.eval.threshold, top_k=self.conf.eval.top_k,
+            #         is_flat=self.conf.eval.is_flat, is_multi=is_multi)
+            # # precision_list[0] save metrics of flat classification
+            # # precision_list[1:] save metrices of hierarchical classification
+            # self.logger.warn(
+            #     "%s performance at epoch %d is precision: %f, "
+            #     "recall: %f, fscore: %f, macro-fscore: %f, right: %d, predict: %d, standard: %d.\n"
+            #     "Loss is: %f." % (
+            #         stage, epoch, precision_list[0][cEvaluator.MICRO_AVERAGE],
+            #         recall_list[0][cEvaluator.MICRO_AVERAGE],
+            #         fscore_list[0][cEvaluator.MICRO_AVERAGE],
+            #         fscore_list[0][cEvaluator.MACRO_AVERAGE],
+            #         right_list[0][cEvaluator.MICRO_AVERAGE],
+            #         predict_list[0][cEvaluator.MICRO_AVERAGE],
+            #             standard_list[0][cEvaluator.MICRO_AVERAGE], total_loss))
+            # return fscore_list[0][cEvaluator.MICRO_AVERAGE]
 
 
 def load_checkpoint(file_name, conf, model, optimizer):
@@ -229,7 +243,7 @@ def train(conf):
         start_time = time.time()
         trainer.train(train_data_loader, model, optimizer, "Train", epoch)
         trainer.eval(train_data_loader, model, optimizer, "Train", epoch)
-        performance = trainer.eval(
+        performance, _, _ = trainer.eval(
             validate_data_loader, model, optimizer, "Validate", epoch)
         # trainer.eval(test_data_loader, model, optimizer, "test", epoch)
         if performance > best_performance:  # record the best model
@@ -252,14 +266,43 @@ def train(conf):
 
     load_checkpoint(model_file_prefix + "_" + str(best_epoch), conf, model,
                     optimizer)
-    trainer.eval(test_data_loader, model, optimizer, "Best test", best_epoch)
+    return trainer.eval(test_data_loader, model, optimizer, "Best test", best_epoch)
 
 
 if __name__ == '__main__':
     config = Config(config_file=sys.argv[1])
     os.environ['CUDA_VISIBLE_DEVICES'] = str(config.train.visible_device_list)
-    torch.manual_seed(2019)
-    torch.cuda.manual_seed(2019)
-    model_list = ["FastText", "TextCNN", "TextRNN", "TextRCNN", "DRNN", "VDCNN", "DPCNN", "AttentiveConvNet", "Transformer"]
-    config._update({'model_name': 'TextCNN'})
-    train(config)
+
+    model_list = ["FastText", "TextCNN", "TextRNN", "TextRCNN", "DRNN", "TextVDCNN", "DPCNN", "AttentiveConvNet", "Transformer"]
+    text_mode_list = ['original', 'translated']
+
+    for text_mode in text_mode_list:
+        result = {}
+        for model_name in model_list:
+            config._update({
+                'model_name': model_name,
+                'data': {
+                    "train_json_files": [
+                        f"data/train_{text_mode}.json",
+                    ],
+                    "validate_json_files": [
+                        f"data/test_{text_mode}.json",
+                    ],
+                    "test_json_files": [
+                        f"data/test_{text_mode}.json"
+                    ],
+                    "generate_dict_using_json_files": True,
+                    "generate_dict_using_all_json_files": True,
+                    "generate_dict_using_pretrained_embedding": False,
+                    "generate_hierarchy_label": True,
+                    "dict_dir": "dict",
+                    "num_worker": 4
+                }
+            })
+            f1, precision, recall = train(config)
+            result.update({
+                model_name: [f1, precision, recall]
+            })
+            # store result
+            pd.DataFrame.from_dict(result, orient='index',
+                                columns=['f1', 'precision', 'recall']).to_csv(f'result/{text_mode}.csv', index_label='model')
