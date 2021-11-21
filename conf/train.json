@@ -11,13 +11,13 @@
   "model_dir": "trained_model",
   "data": {
     "train_json_files": [
-      "data/train.json"
+      "data/train_original.json"
     ],
     "validate_json_files": [
-      "data/test.json"
+      "data/test_original.json"
     ],
     "test_json_files": [
-      "data/test.json"
+      "data/test_original.json"
     ],
     "generate_dict_using_json_files": true,
     "generate_dict_using_all_json_files": true,
